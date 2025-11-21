@@ -35,13 +35,25 @@ jobs:
       # - name: Prebuild (Generate Android Project)
       #   run: npx expo prebuild --platform android
 
+      - name: Build APK (Release)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace --info
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
+
       - name: Build APK (Debug)
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace --info
 
-      - name: Upload APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
