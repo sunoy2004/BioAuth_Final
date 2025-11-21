@@ -19,8 +19,8 @@ jobs:
       run: |
         npm ci --legacy-peer-deps
         # ensure expo's webpack config is available and the web packages are installed
-        npm install --save-dev @expo/webpack-config@^20.0.0
-        npm install --save react-dom@18.2.0 react-native-web@~0.19.10
+        npm install --legacy-peer-deps --save-dev @expo/webpack-config@^20.0.0
+        npm install --legacy-peer-deps --save react-dom@18.2.0 react-native-web@~0.19.10
       
     - name: Build app (Expo export:web using Webpack)
       env:
