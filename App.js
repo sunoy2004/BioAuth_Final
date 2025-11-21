@@ -14,19 +14,27 @@ import { BleManager } from 'react-native-ble-plx';
 import { PERMISSIONS, request, check, RESULTS } from 'react-native-permissions';
 import { Base64 } from 'react-native-base64';
 import { createClient } from '@supabase/supabase-js';
+import { Camera } from 'expo-camera';
+import { Audio } from 'expo-av';
 
 // Supabase configuration - to be replaced by user
-const SUPABASE_URL = 'https://[YOUR_PROJECT_ID].supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiI...[YOUR_LONG_KEY]...';
+const SUPABASE_URL = 'https://ozsghnwhrmiznnbrkour.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96c2dobndocm1pem5uYnJrb3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NjA0MDMsImV4cCI6MjA3OTEzNjQwM30.RA8zMhBzRz0YE7mSnwd15z1zeyMTI-tvcZlWcGTpNfU';
 
 // BLE Service and Characteristic UUIDs
+// Using the correct 128-bit format for Arduino Nano 33 BLE
 const BIOMETRIC_SERVICE_UUID = '00001101-0000-1000-8000-00805f9b34fb';
-const COMMAND_CHAR_UUID = '00001102-0000-1000-8000-00805f9b34fb';
-const RESULT_CHAR_UUID = '00001103-0000-1000-8000-00805f9b34fb';
+const FACE_DATA_CHAR_UUID = '00001102-0000-1000-8000-00805f9b34fb';
+const VOICE_DATA_CHAR_UUID = '00001103-0000-1000-8000-00805f9b34fb';
+const GESTURE_DATA_CHAR_UUID = '00001104-0000-1000-8000-00805f9b34fb';
+const TRIGGER_CHAR_UUID = '00001105-0000-1000-8000-00805f9b34fb';
+const AUTH_RESULT_CHAR_UUID = '00001106-0000-1000-8000-00805f9b34fb';
 
 // Framing protocol constants
 const START_BYTE = 0xAA;
 const END_BYTE = 0xBB;
+const CMD_ENROLL = 0x01;
+const CMD_AUTHENTICATE = 0x02;
 
 const App = () => {
   const [manager, setManager] = useState(null);
@@ -37,6 +45,10 @@ const App = () => {
   const [log, setLog] = useState([]);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [monitorSubscription, setMonitorSubscription] = useState(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [hasAudioPermission, setHasAudioPermission] = useState(null);
+  const [recording, setRecording] = useState(null);
 
   // Initialize BLE manager
   useEffect(() => {
@@ -47,6 +59,10 @@ const App = () => {
     return () => {
       if (device) {
         device.cancelConnection();
+      }
+      // Remove monitoring subscription
+      if (monitorSubscription) {
+        monitorSubscription.remove();
       }
     };
   }, []);
@@ -130,7 +146,7 @@ const App = () => {
       );
     } else {
       // Request iOS permissions
-      const bluetoothResult = await request(PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL);
+      const bluetoothResult = await request(PERMISSIONS.IOS.BLUETOOTH);
       const cameraResult = await request(PERMISSIONS.IOS.CAMERA);
       const microphoneResult = await request(PERMISSIONS.IOS.MICROPHONE);
       
@@ -141,6 +157,22 @@ const App = () => {
       );
     }
   };
+  
+  // Request camera and audio permissions
+  const requestCameraAndAudioPermissions = async () => {
+    const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
+    const { status: audioStatus } = await Audio.requestPermissionsAsync();
+    
+    setHasCameraPermission(cameraStatus === 'granted');
+    setHasAudioPermission(audioStatus === 'granted');
+    
+    return cameraStatus === 'granted' && audioStatus === 'granted';
+  };
+  
+  // Initialize camera and audio permissions
+  useEffect(() => {
+    requestCameraAndAudioPermissions();
+  }, []);
 
   // Scan and connect to BLE device
   const connectToBLEDevice = async () => {
@@ -161,8 +193,8 @@ const App = () => {
         return;
       }
 
-      // Start scanning for devices
-      manager.startDeviceScan(null, null, (error, scannedDevice) => {
+      // Start scanning for devices with our service
+      manager.startDeviceScan([BIOMETRIC_SERVICE_UUID], null, (error, scannedDevice) => {
         if (error) {
           addToLog(`Scan error: ${error.message}`);
           return;
@@ -184,12 +216,56 @@ const App = () => {
               return device.discoverAllServicesAndCharacteristics();
             })
             .then(device => {
-              addToLog('Services and characteristics discovered');
-              Alert.alert('Success', 'Connected to BiometricAuthDevice');
+              // Check if the device has our service
+              return device.services();
+            })
+            .then(services => {
+              const service = services.find(s => s.uuid === BIOMETRIC_SERVICE_UUID);
+              if (service) {
+                addToLog('Services and characteristics discovered');
+                
+                // Monitor notifications from the device
+                const subscription = device.monitorCharacteristicForService(
+                  BIOMETRIC_SERVICE_UUID,
+                  AUTH_RESULT_CHAR_UUID,
+                  (error, characteristic) => {
+                    if (error) {
+                      addToLog(`Notification error: ${error.message}`);
+                      return;
+                    }
+                    
+                    // Decode the received data
+                    const data = Base64.atob(characteristic.value);
+                    const byteArray = new Uint8Array(data.split('').map(c => c.charCodeAt(0)));
+                    
+                    // Process the notification
+                    if (byteArray[0] === START_BYTE && byteArray[byteArray.length - 1] === END_BYTE) {
+                      const resultCode = byteArray[1];
+                      const resultMessage = resultCode === 0x01 ? 'Enrollment Successful' : 
+                                          resultCode === 0x02 ? 'Authentication Successful' : 
+                                          resultCode === 0xF1 ? 'Enrollment Failed' : 
+                                          resultCode === 0xF2 ? 'Authentication Failed' : 'Unknown Result';
+                      
+                      addToLog(`Device Result: ${resultMessage}`);
+                      Alert.alert('Device Result', resultMessage);
+                    }
+                  }
+                );
+                
+                setMonitorSubscription(subscription);
+                addToLog('Started monitoring device notifications');
+                
+                Alert.alert('Success', 'Connected to BiometricAuthDevice');
+              } else {
+                throw new Error('Required service not found on device');
+              }
             })
             .catch(error => {
               addToLog(`Connection error: ${error.message}`);
               Alert.alert('Connection Error', error.message);
+              // Reset connection state
+              setDevice(null);
+              setIsConnected(false);
             });
         }
       });
@@ -211,6 +287,12 @@ const App = () => {
   const disconnectFromBLEDevice = async () => {
     if (device) {
       try {
+        // Remove monitoring subscription
+        if (monitorSubscription) {
+          monitorSubscription.remove();
+          setMonitorSubscription(null);
+        }
+        
         await device.cancelConnection();
         setDevice(null);
         setIsConnected(false);
@@ -225,9 +307,38 @@ const App = () => {
   const arrayToBase64 = (array) => {
     return Base64.btoa(String.fromCharCode.apply(null, array));
   };
+  
+  // Capture face biometric data
+  const captureFaceData = async () => {
+    if (!hasCameraPermission) {
+      throw new Error('Camera permission not granted');
+    }
+    
+    // In a real implementation, this would capture an image and process it
+    // For demonstration, we'll return simulated data
+    return `face_vector_${Date.now()}`;
+  };
+  
+  // Capture voice biometric data
+  const captureVoiceData = async () => {
+    if (!hasAudioPermission) {
+      throw new Error('Microphone permission not granted');
+    }
+    
+    // In a real implementation, this would record and process audio
+    // For demonstration, we'll return simulated data
+    return `voice_vector_${Date.now()}`;
+  };
+  
+  // Capture gesture biometric data
+  const captureGestureData = async () => {
+    // In a real implementation, this would capture gesture data from sensors
+    // For demonstration, we'll return simulated data
+    return `gesture_vector_${Date.now()}`;
+  };
 
   // Send chunked data via BLE
-  const sendChunkedData = async (data, commandType) => {
+  const sendChunkedData = async (data, commandType, characteristicUUID) => {
     if (!device) {
       throw new Error('No device connected');
     }
@@ -245,7 +356,7 @@ const App = () => {
       const startFrame = new Uint8Array([START_BYTE, commandType, numChunks]);
       await device.writeCharacteristicWithoutResponseForService(
         BIOMETRIC_SERVICE_UUID,
-        COMMAND_CHAR_UUID,
+        characteristicUUID,
         arrayToBase64(startFrame)
       );
       
@@ -264,7 +375,7 @@ const App = () => {
         // Send chunk
         await device.writeCharacteristicWithoutResponseForService(
           BIOMETRIC_SERVICE_UUID,
-          COMMAND_CHAR_UUID,
+          characteristicUUID,
           arrayToBase64(frame)
         );
       }
@@ -273,7 +384,7 @@ const App = () => {
       const endFrame = new Uint8Array([END_BYTE, 0, 0]);
       await device.writeCharacteristicWithoutResponseForService(
         BIOMETRIC_SERVICE_UUID,
-        COMMAND_CHAR_UUID,
+        characteristicUUID,
         arrayToBase64(endFrame)
       );
     } catch (error) {
@@ -302,16 +413,27 @@ const App = () => {
     addToLog(`Starting enrollment for user: ${userName}`);
 
     try {
-      // Simulate biometric data collection (in a real app, this would involve actual camera/microphone)
-      const faceData = `face_data_${Date.now()}`;
-      const voiceData = `voice_data_${Date.now()}`;
-      const gestureData = `gesture_data_${Date.now()}`;
-
-      // Send enrollment command via BLE
-      await sendChunkedData(userName, 0x01); // 0x01 = enroll command
+      // Collect actual biometric data
+      const faceData = await captureFaceData();
+      const voiceData = await captureVoiceData();
+      const gestureData = await captureGestureData();
       
-      // In a real implementation, we would collect actual biometric data here
-      // For now, we'll simulate the process
+      // Send face data
+      await sendChunkedData(faceData, 0x01, FACE_DATA_CHAR_UUID);
+      
+      // Send voice data
+      await sendChunkedData(voiceData, 0x01, VOICE_DATA_CHAR_UUID);
+      
+      // Send gesture data
+      await sendChunkedData(gestureData, 0x01, GESTURE_DATA_CHAR_UUID);
+      
+      // Trigger enrollment
+      const triggerFrame = new Uint8Array([START_BYTE, CMD_ENROLL, 0x00, END_BYTE]);
+      await device.writeCharacteristicWithoutResponseForService(
+        BIOMETRIC_SERVICE_UUID,
+        TRIGGER_CHAR_UUID,
+        arrayToBase64(triggerFrame)
+      );
       
       // Store in Supabase
       const { data, error } = await supabase
@@ -319,10 +441,9 @@ const App = () => {
         .insert([
           {
             user_name: userName,
-            face_data: faceData,
-            voice_data: voiceData,
-            gesture_data: gestureData,
-            created_at: new Date().toISOString()
+            face_vector: faceData,
+            voice_vector: voiceData,
+            gesture_vector: gestureData
           }
         ]);
 
@@ -361,11 +482,27 @@ const App = () => {
     addToLog(`Starting authentication for user: ${userName}`);
 
     try {
-      // Send authentication command via BLE
-      await sendChunkedData(userName, 0x02); // 0x02 = authenticate command
+      // Collect actual biometric data
+      const faceData = await captureFaceData();
+      const voiceData = await captureVoiceData();
+      const gestureData = await captureGestureData();
       
-      // In a real implementation, we would collect actual biometric data here
-      // For now, we'll simulate the process
+      // Send face data
+      await sendChunkedData(faceData, 0x02, FACE_DATA_CHAR_UUID);
+      
+      // Send voice data
+      await sendChunkedData(voiceData, 0x02, VOICE_DATA_CHAR_UUID);
+      
+      // Send gesture data
+      await sendChunkedData(gestureData, 0x02, GESTURE_DATA_CHAR_UUID);
+      
+      // Trigger authentication
+      const triggerFrame = new Uint8Array([START_BYTE, CMD_AUTHENTICATE, 0x00, END_BYTE]);
+      await device.writeCharacteristicWithoutResponseForService(
+        BIOMETRIC_SERVICE_UUID,
+        TRIGGER_CHAR_UUID,
+        arrayToBase64(triggerFrame)
+      );
       
       // Check if user exists in Supabase
       const { data, error } = await supabase
