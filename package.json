@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "npx expo export:web",
+    "build": "EXPO_WEB_BUNDLER=webpack npx expo export:web",
     "deploy": "gh-pages -d web-build"
   },
   "dependencies": {
