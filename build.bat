@@ -7,6 +7,6 @@ REM Install dependencies
 npm install
 
 REM Build the web version
-npx expo build:web
+npx expo export:web
 
 echo Build complete! The web version is ready in the web-build directory.

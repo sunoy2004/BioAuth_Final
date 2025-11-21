@@ -7,6 +7,6 @@ echo "Building BioAuth Mobile for web deployment..."
 npm install
 
 # Build the web version
-npx expo build:web
+npx expo export:web
 
 echo "Build complete! The web version is ready in the web-build directory."
