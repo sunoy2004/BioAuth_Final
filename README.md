@@ -1,73 +1,166 @@
-# Welcome to your Lovable project
+# Multi-Modal Biometric Authentication System
 
-## Project info
+A complete end-to-end biometric authentication system with React frontend, Arduino Nano 33 BLE peripheral, and Supabase backend integration.
 
-**URL**: https://lovable.dev/projects/c023ae56-89f1-4630-a575-f7941ba3fad5
+## Project Overview
 
-## How can I edit this code?
+This project implements a secure multi-modal biometric authentication system that combines facial recognition, voice authentication, and gesture recognition. The system uses Web Bluetooth API to communicate with an Arduino Nano 33 BLE device and stores biometric data in a Supabase database.
 
-There are several ways of editing your application.
+## Key Features
 
-**Use Lovable**
+- **Multi-Modal Biometric Authentication**: Face, voice, and gesture recognition
+- **BLE Integration**: Communicates with Arduino Nano 33 BLE via Web Bluetooth API
+- **Cloud Storage**: Securely stores biometric data in Supabase
+- **Persistent Connection**: Maintains BLE connection until explicitly disconnected
+- **Authentication Logging**: Tracks all authentication attempts with IP addresses
+- **Responsive UI**: Modern React interface with Tailwind CSS styling
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c023ae56-89f1-4630-a575-f7941ba3fad5) and start prompting.
+## Technology Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend**: React with TypeScript, Vite, Tailwind CSS, shadcn-ui
+- **Bluetooth**: Web Bluetooth API for Arduino communication
+- **Backend**: Supabase for data storage and authentication
+- **Hardware**: Arduino Nano 33 BLE for biometric data processing
+- **Database**: Supabase PostgreSQL with two tables:
+  - `enrollments`: Stores user biometric data
+  - `authentication_logs`: Tracks authentication attempts
 
-**Use your preferred IDE**
+## System Architecture
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Components
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **React Web Application**
+   - User interface for enrollment and authentication
+   - Biometric data capture (face, voice, gesture)
+   - BLE device connection and communication
+   - Supabase integration for data storage
 
-Follow these steps:
+2. **Arduino Nano 33 BLE**
+   - Receives biometric data from the web app
+   - Processes authentication requests
+   - Communicates via BLE GATT characteristics
+
+3. **Supabase Backend**
+   - `enrollments` table: Stores user biometric data with IP tracking
+   - `authentication_logs` table: Records all authentication attempts
+
+### BLE Communication Protocol
+
+- **Service UUID**: `00001101-0000-1000-8000-00805f9b34fb`
+- **Characteristics**:
+  - Command (`00001102-0000-1000-8000-00805f9b34fb`): Send commands to Arduino
+  - Result (`00001103-0000-1000-8000-00805f9b34fb`): Receive responses from Arduino
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js & npm installed
+- Arduino Nano 33 BLE board
+- Web browser that supports Web Bluetooth (Chrome, Edge, Opera)
+- Supabase account with configured database
+
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone https://github.com/sunoy2004/BioAuth_Final.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd BioAuth_Final
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Supabase Database Setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Create the required tables in your Supabase database:
 
-**Use GitHub Codespaces**
+```sql
+-- Create enrollments table
+CREATE TABLE IF NOT EXISTS enrollments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_name TEXT UNIQUE NOT NULL,
+  face_vector TEXT,
+  voice_vector TEXT,
+  gesture_vector TEXT,
+  client_ip TEXT,
+  command TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+-- Create authentication_logs table
+CREATE TABLE IF NOT EXISTS authentication_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_name TEXT NOT NULL,
+  success BOOLEAN NOT NULL,
+  error_message TEXT,
+  client_ip TEXT,
+  timestamp TIMESTAMPTZ DEFAULT NOW()
+);
 
-## What technologies are used for this project?
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_auth_logs_user_name ON authentication_logs(user_name);
+CREATE INDEX IF NOT EXISTS idx_auth_logs_success ON authentication_logs(success);
+CREATE INDEX IF NOT EXISTS idx_auth_logs_timestamp ON authentication_logs(timestamp);
+```
 
-This project is built with:
+### Arduino Setup
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Open the Arduino IDE
+2. Install the ArduinoBLE library
+3. Upload the provided sketch to your Arduino Nano 33 BLE
+4. Ensure the Arduino is powered and advertising
 
-## How can I deploy this project?
+## Usage
 
-Simply open [Lovable](https://lovable.dev/projects/c023ae56-89f1-4630-a575-f7941ba3fad5) and click on Share -> Publish.
+1. Start the development server: `npm run dev`
+2. Open the application in a Web Bluetooth supported browser
+3. Connect to your Arduino Nano 33 BLE device
+4. Choose between enrollment and authentication modes
+5. Capture biometric data (face, voice, gesture)
+6. Submit data for processing
 
-## Can I connect a custom domain to my Lovable project?
+## Project Structure
 
-Yes, you can!
+```
+src/
+├── components/
+│   ├── biometric/       # Biometric capture components
+│   ├── bluetooth/       # BLE connection component
+│   └── ui/              # UI components
+├── hooks/               # Custom React hooks
+├── lib/                 # Utility functions
+├── pages/               # Page components
+└── types/               # TypeScript type definitions
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Security Features
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **Data Encryption**: Biometric data stored as Base64 encoded strings
+- **IP Tracking**: All operations logged with client IP addresses
+- **Authentication Logging**: Complete audit trail of authentication attempts
+- **Secure Communication**: HTTPS communication with Supabase
+- **BLE Security**: Platform-level encryption for Bluetooth communication
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- React and Vite communities
+- Supabase for backend services
+- Arduino for BLE hardware platform
