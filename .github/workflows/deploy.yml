@@ -15,15 +15,16 @@ jobs:
       with:
         node-version: '20'
         
-    - name: Install bun and project dependencies
+    - name: Install dependencies
       run: |
-        curl -fsSL https://bun.sh/install | bash
-        export BUN_INSTALL="$HOME/.bun"
-        export PATH="$BUN_INSTALL/bin:$PATH"
-        bun --version
-        bun add react-native-web@~0.19.10 react-dom@18.2.0 @expo/metro-runtime@~3.2.3
+        npm ci
+        # ensure expo's webpack config is available and the web packages are installed
+        npm install --save-dev @expo/webpack-config
+        npm install --save react-dom@18.2.0 react-native-web@~0.19.10
       
-    - name: Build app
+    - name: Build app (Expo export:web using Webpack)
+      env:
+        EXPO_WEB_BUNDLER: webpack
       run: npx expo export:web
       
     - name: Deploy to GitHub Pages
