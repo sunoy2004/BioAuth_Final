@@ -32,7 +32,7 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Prebuild (Generate Android Project)
-        run: npx expo prebuild --platform android --no-interactive
+        run: npx expo prebuild --platform android
 
       - name: Build APK (Debug)
         run: |
