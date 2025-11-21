@@ -15,10 +15,13 @@ jobs:
       with:
         node-version: '20'
         
-    - name: Install dependencies
+    - name: Install bun and project dependencies
       run: |
-        npm install
-        npm install react-native-web@~0.19.10 react-dom@18.2.0 @expo/metro-runtime@~3.2.3
+        curl -fsSL https://bun.sh/install | bash
+        export BUN_INSTALL="$HOME/.bun"
+        export PATH="$BUN_INSTALL/bin:$PATH"
+        bun --version
+        bun add react-native-web@~0.19.10 react-dom@18.2.0 @expo/metro-runtime@~3.2.3
       
     - name: Build app
       run: npx expo export:web
