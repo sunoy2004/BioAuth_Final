@@ -31,8 +31,9 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Prebuild (Generate Android Project)
-        run: npx expo prebuild --platform android
+      # Prebuild is now committed
+      # - name: Prebuild (Generate Android Project)
+      #   run: npx expo prebuild --platform android
 
       - name: Build APK (Debug)
         run: |
