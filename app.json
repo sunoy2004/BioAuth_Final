@@ -30,8 +30,20 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "package": "com.bioauth.mobile"
     },
+    "plugins": [
+      "@config-plugins/react-native-ble-plx",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow BioAuth Mobile to access your camera",
+          "microphonePermission": "Allow BioAuth Mobile to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }

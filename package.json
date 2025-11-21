@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@config-plugins/react-native-ble-plx": "^7.0.0",
     "@expo/webpack-config": "^19.0.0",
     "@types/react": "~18.2.45",
     "buffer": "^6.0.3",
