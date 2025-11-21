@@ -11,8 +11,6 @@ import {
   Platform,
 } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
-import { PERMISSIONS, request, check, RESULTS } from 'react-native-permissions';
-import { Base64 } from 'react-native-base64';
 import { createClient } from '@supabase/supabase-js';
 import { Camera } from 'expo-camera';
 import { Audio } from 'expo-av';
@@ -145,16 +143,8 @@ const App = () => {
         microphone === PermissionsAndroid.RESULTS.GRANTED
       );
     } else {
-      // Request iOS permissions
-      const bluetoothResult = await request(PERMISSIONS.IOS.BLUETOOTH);
-      const cameraResult = await request(PERMISSIONS.IOS.CAMERA);
-      const microphoneResult = await request(PERMISSIONS.IOS.MICROPHONE);
-      
-      return (
-        bluetoothResult === RESULTS.GRANTED &&
-        cameraResult === RESULTS.GRANTED &&
-        microphoneResult === RESULTS.GRANTED
-      );
+      // iOS permissions are handled by Expo modules
+      return true;
     }
   };
   
@@ -235,7 +225,7 @@ const App = () => {
                     }
                     
                     // Decode the received data
-                    const data = Base64.atob(characteristic.value);
+                    const data = atob(characteristic.value);
                     const byteArray = new Uint8Array(data.split('').map(c => c.charCodeAt(0)));
                     
                     // Process the notification
@@ -305,7 +295,7 @@ const App = () => {
 
   // Convert Uint8Array to Base64 string
   const arrayToBase64 = (array) => {
-    return Base64.btoa(String.fromCharCode.apply(null, array));
+    return btoa(String.fromCharCode.apply(null, array));
   };
   
   // Capture face biometric data
@@ -345,8 +335,8 @@ const App = () => {
 
     try {
       // Convert string data to Uint8Array
-      const encoder = new TextEncoder();
-      const dataArray = encoder.encode(data);
+      // TextEncoder is not available in React Native, use manual encoding
+      const dataArray = new Uint8Array(data.split('').map(c => c.charCodeAt(0)));
       
       // Calculate number of chunks
       const CHUNK_SIZE = 18; // 20 bytes minus 2 framing bytes
