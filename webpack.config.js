@@ -1,8 +1,8 @@
-const createConfig = require('@expo/webpack-config');
+const createExpoWebpackConfigAsync = require('@expo/webpack-config');
 const webpack = require('webpack');
 
 module.exports = async function (env, argv) {
-  const config = await createConfig(env, argv);
+  const config = await createExpoWebpackConfigAsync(env, argv);
   
   // Add fallback for crypto and other Node.js core modules
   config.resolve.fallback = {
