@@ -1,166 +1,140 @@
-# Multi-Modal Biometric Authentication System
+# BioAuth Mobile - React Native Implementation
 
-A complete end-to-end biometric authentication system with React frontend, Arduino Nano 33 BLE peripheral, and Supabase backend integration.
+A React Native mobile application for multi-modal biometric authentication using Bluetooth Low Energy (BLE) and Supabase backend.
 
-## Project Overview
+## Overview
 
-This project implements a secure multi-modal biometric authentication system that combines facial recognition, voice authentication, and gesture recognition. The system uses Web Bluetooth API to communicate with an Arduino Nano 33 BLE device and stores biometric data in a Supabase database.
+This mobile application is a port of the web-based biometric authentication system to React Native, enabling deployment on iOS and Android devices. It maintains the same core functionality while adapting to native mobile APIs.
 
-## Key Features
+## Features
 
 - **Multi-Modal Biometric Authentication**: Face, voice, and gesture recognition
-- **BLE Integration**: Communicates with Arduino Nano 33 BLE via Web Bluetooth API
-- **Cloud Storage**: Securely stores biometric data in Supabase
-- **Persistent Connection**: Maintains BLE connection until explicitly disconnected
-- **Authentication Logging**: Tracks all authentication attempts with IP addresses
-- **Responsive UI**: Modern React interface with Tailwind CSS styling
+- **Native BLE Integration**: Uses `react-native-ble-plx` for Bluetooth communication
+- **Supabase Backend**: Cloud storage for biometric data and authentication logs
+- **Native Permissions**: Proper handling of BLE, Camera, and Microphone permissions
+- **Cross-Platform**: Works on both iOS and Android
 
 ## Technology Stack
 
-- **Frontend**: React with TypeScript, Vite, Tailwind CSS, shadcn-ui
-- **Bluetooth**: Web Bluetooth API for Arduino communication
-- **Backend**: Supabase for data storage and authentication
-- **Hardware**: Arduino Nano 33 BLE for biometric data processing
-- **Database**: Supabase PostgreSQL with two tables:
-  - `enrollments`: Stores user biometric data
-  - `authentication_logs`: Tracks authentication attempts
+- **Framework**: React Native with Expo
+- **BLE Library**: react-native-ble-plx
+- **Permissions**: react-native-permissions
+- **Backend**: Supabase (@supabase/supabase-js)
+- **UI**: React Native Components
 
-## System Architecture
+## Prerequisites
 
-### Components
+Before running the application, ensure you have the following installed:
 
-1. **React Web Application**
-   - User interface for enrollment and authentication
-   - Biometric data capture (face, voice, gesture)
-   - BLE device connection and communication
-   - Supabase integration for data storage
+1. Node.js (version 16.x or higher)
+2. npm (usually comes with Node.js)
+3. Expo CLI (installed globally)
 
-2. **Arduino Nano 33 BLE**
-   - Receives biometric data from the web app
-   - Processes authentication requests
-   - Communicates via BLE GATT characteristics
+## Installation
 
-3. **Supabase Backend**
-   - `enrollments` table: Stores user biometric data with IP tracking
-   - `authentication_logs` table: Records all authentication attempts
+1. Clone or download the project
+2. Navigate to the project directory
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-### BLE Communication Protocol
+## Configuration
 
-- **Service UUID**: `00001101-0000-1000-8000-00805f9b34fb`
-- **Characteristics**:
-  - Command (`00001102-0000-1000-8000-00805f9b34fb`): Send commands to Arduino
-  - Result (`00001103-0000-1000-8000-00805f9b34fb`): Receive responses from Arduino
+Before running the application, you need to configure the Supabase credentials in `App.js`:
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js & npm installed
-- Arduino Nano 33 BLE board
-- Web browser that supports Web Bluetooth (Chrome, Edge, Opera)
-- Supabase account with configured database
-
-### Installation
-
-```sh
-# Clone the repository
-git clone https://github.com/sunoy2004/BioAuth_Final.git
-
-# Navigate to the project directory
-cd BioAuth_Final
-
-# Install dependencies
-npm install
-
-# Start the development server
-npm run dev
+```javascript
+const SUPABASE_URL = 'https://[YOUR_PROJECT_ID].supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiI...[YOUR_LONG_KEY]...';
 ```
 
-### Supabase Database Setup
+Replace these placeholders with your actual Supabase project credentials.
 
-Create the required tables in your Supabase database:
+## Running the Application
 
-```sql
--- Create enrollments table
-CREATE TABLE IF NOT EXISTS enrollments (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_name TEXT UNIQUE NOT NULL,
-  face_vector TEXT,
-  voice_vector TEXT,
-  gesture_vector TEXT,
-  client_ip TEXT,
-  command TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+To start the development server:
 
--- Create authentication_logs table
-CREATE TABLE IF NOT EXISTS authentication_logs (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_name TEXT NOT NULL,
-  success BOOLEAN NOT NULL,
-  error_message TEXT,
-  client_ip TEXT,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Add indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_auth_logs_user_name ON authentication_logs(user_name);
-CREATE INDEX IF NOT EXISTS idx_auth_logs_success ON authentication_logs(success);
-CREATE INDEX IF NOT EXISTS idx_auth_logs_timestamp ON authentication_logs(timestamp);
+```bash
+npm start
 ```
 
-### Arduino Setup
+Then follow the instructions to run on:
+- iOS: Press `i`
+- Android: Press `a`
+- Web: Press `w`
 
-1. Open the Arduino IDE
-2. Install the ArduinoBLE library
-3. Upload the provided sketch to your Arduino Nano 33 BLE
-4. Ensure the Arduino is powered and advertising
+## Native Permissions
 
-## Usage
+### Android
 
-1. Start the development server: `npm run dev`
-2. Open the application in a Web Bluetooth supported browser
-3. Connect to your Arduino Nano 33 BLE device
-4. Choose between enrollment and authentication modes
-5. Capture biometric data (face, voice, gesture)
-6. Submit data for processing
+The application requires the following permissions in `app.json`:
 
-## Project Structure
+- `android.permission.BLUETOOTH_SCAN`
+- `android.permission.BLUETOOTH_CONNECT`
+- `android.permission.ACCESS_FINE_LOCATION`
+- `android.permission.CAMERA`
+- `android.permission.RECORD_AUDIO`
 
-```
-src/
-├── components/
-│   ├── biometric/       # Biometric capture components
-│   ├── bluetooth/       # BLE connection component
-│   └── ui/              # UI components
-├── hooks/               # Custom React hooks
-├── lib/                 # Utility functions
-├── pages/               # Page components
-└── types/               # TypeScript type definitions
-```
+### iOS
 
-## Security Features
+The application requires the following usage descriptions in `app.json`:
 
-- **Data Encryption**: Biometric data stored as Base64 encoded strings
-- **IP Tracking**: All operations logged with client IP addresses
-- **Authentication Logging**: Complete audit trail of authentication attempts
-- **Secure Communication**: HTTPS communication with Supabase
-- **BLE Security**: Platform-level encryption for Bluetooth communication
+- `NSBluetoothAlwaysUsageDescription`
+- `NSCameraUsageDescription`
+- `NSMicrophoneUsageDescription`
 
-## Contributing
+## Architecture
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a pull request
+The application follows a modular architecture:
 
-## License
+1. **BLE Management**: Uses `react-native-ble-plx` for all Bluetooth operations
+2. **Supabase Integration**: Handles data storage and retrieval
+3. **Permission Handling**: Manages all required native permissions
+4. **UI Components**: Modern, responsive interface using React Native components
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Key Components
 
-## Acknowledgments
+### App.js
+Main application component that handles:
+- BLE connection management
+- Supabase client initialization
+- User enrollment and authentication
+- Permission requests
+- UI rendering
 
-- React and Vite communities
-- Supabase for backend services
-- Arduino for BLE hardware platform
+### BLE Operations
+- Device scanning and connection
+- Service and characteristic discovery
+- Data transmission with chunking and framing
+
+### Data Management
+- User enrollment with biometric data storage
+- User authentication against stored data
+- Activity logging
+
+## Development Notes
+
+1. The application uses Base64 encoding for BLE data transmission as required by `react-native-ble-plx`
+2. Chunking and framing protocols are maintained from the original implementation
+3. All native permissions are properly configured in `app.json`
+4. The UI is designed to be mobile-friendly and responsive
+
+## Troubleshooting
+
+### BLE Connection Issues
+- Ensure Bluetooth is enabled on your device
+- Make sure the Arduino device is advertising
+- Check that all required permissions are granted
+
+### Supabase Connection Issues
+- Verify your Supabase URL and API key
+- Ensure your database tables are properly configured
+- Check network connectivity
+
+## Future Enhancements
+
+1. Implement actual biometric data capture (camera, microphone)
+2. Add more sophisticated error handling
+3. Implement offline capabilities
+4. Add more detailed logging and analytics
+5. Improve UI/UX with more advanced components

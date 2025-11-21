@@ -16,7 +16,9 @@ jobs:
         node-version: '18'
         
     - name: Install dependencies
-      run: npm install
+      run: |
+        npm install
+        npx expo install react-native-web react-dom @expo/metro-runtime
       
     - name: Build app
       run: npx expo export:web
